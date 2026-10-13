@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>戌無动态封面 · 网页版</title>
+  <link rel="icon" href="assets/icon.png"><link rel="stylesheet" href="style.css">
+  <script defer src="vendor/codecs.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand"><img src="assets/icon.png" alt="" width="42" height="42"><div><h1>戌無动态封面</h1><p>让灵感动起来。</p></div></div>
+  <nav aria-label="项目操作"><button id="new">新建</button><button id="open">打开项目</button><button id="save">保存项目</button><button id="export" class="primary">导出封面 <span aria-hidden="true">↗</span></button></nav>
+</header>
+<main>
+  <aside class="panel creation">
+    <div class="panel-title"><h2>创作</h2><p>你的文字，你的节奏。</p></div>
+    <label for="text">动态文字</label><textarea id="text" rows="4" spellcheck="false"></textarea>
+    <div class="row"><button id="random-text">随机文案</button><button id="random-style">随机风格</button></div>
+    <label for="effect">文字动效 · 15 种</label><select id="effect"></select>
+    <label for="font">字体</label><select id="font"></select>
+    <button id="system-fonts" class="quiet">＋ 载入电脑字体</button>
+    <div class="row"><input id="custom-font" type="text" placeholder="或输入电脑已安装的字体名称" aria-label="自定义电脑字体名称"><button id="apply-font">应用</button></div>
+    <p class="hint">字体来自本机；缺失字体会由浏览器替代。</p>
+    <label for="weight">字重</label><select id="weight"><option value="300">细体</option><option value="400">常规</option><option value="700">粗体</option></select>
+    <label for="size" class="between">字号 <output id="size-value"></output></label><input id="size" type="range" min="12" max="180" step="1">
+    <label for="speed" class="between">动画速度 <output id="speed-value"></output></label><input id="speed" type="range" min="0.1" max="3" step="0.1">
+    <label for="density" class="between">文字密度 <output id="density-value"></output></label><input id="density" type="range" min="0" max="1" step="0.01">
+    <div class="color-row"><label for="color">动效文字颜色</label><input id="color" type="color" aria-label="动效文字颜色"></div>
+    <hr><h3>背景</h3><p id="media-name" class="muted">未添加背景素材</p>
+    <div class="row"><button id="upload">＋ 添加图片 / 视频</button><button id="remove-media">移除</button></div>
+    <div class="color-row"><label for="background">背景底色</label><input id="background" type="color" aria-label="背景底色"></div>
+    <p class="hint">图片支持 PNG、JPG、WebP；视频支持浏览器可解码的 MP4、MOV。素材只在本机处理。</p>
+  </aside>
+  <section class="workspace" aria-label="画布预览">
+    <div class="canvas-heading"><h2>画布预览</h2><span>3 : 4</span></div>
+    <div class="canvas-wrap"><canvas id="preview" width="1080" height="1440" aria-label="动态封面实时预览"></canvas></div>
+    <div class="playback"><input id="timeline" type="range" min="0" max="5" step="0.01" value="0" aria-label="预览时间轴"><div class="between"><button id="play">暂停</button><span id="canvas-info"></span><button id="restart">重播</button></div></div>
+    <div class="drop-hint" id="drop-hint">拖入图片或视频，作为背景</div>
+  </section>
+  <aside class="panel inspector">
+    <div class="panel-title"><h2>画布设置</h2><p>细节，让作品更完整。</p></div>
+    <label class="check"><input id="coordinates" type="checkbox">显示顶部文字</label>
+    <label for="top-left">左上角</label><input id="top-left" type="text">
+    <label for="top-right">右上角</label><input id="top-right" type="text">
+    <label for="bottom-left">左下角</label><textarea id="bottom-left" rows="2"></textarea>
+    <label class="check"><input id="date" type="checkbox">显示右下角文字</label><textarea id="bottom-right" rows="2" aria-label="右下角文字"></textarea>
+    <label class="check"><input id="hud" type="checkbox">HUD 追踪辅助线</label><p class="hint">四角图层文字为白色，独立于动效颜色。</p>
+    <hr><h3>导出设置</h3>
+    <label for="format">格式</label><select id="format"><option value="mp4">MP4 视频</option><option value="png">PNG 当前帧</option><option value="gif">GIF 动图</option><option value="live">实况转换素材包 · JPG + MP4</option></select>
+    <label for="resolution">尺寸</label><select id="resolution"><option value="1080">1080 × 1440 · 高清</option><option value="720">720 × 960 · 轻量</option><option value="540">540 × 720 · 快速</option></select>
+    <label for="duration">时长 · 1–10 秒</label><input id="duration" type="number" min="1" max="10" step="1">
+    <label for="fps">视频帧率</label><select id="fps"><option>30</option><option>60</option><option>90</option><option>120</option></select>
+    <p class="hint">GIF 最高 30 fps。实况素材包需要在 iPhone 使用视频转实况工具，不会直接导入为原生实况。</p>
+    <p class="hint" id="browser-note">MP4 导出推荐使用最新版 Chrome 或 Edge。</p>
+  </aside>
+</main>
+<footer><span id="status" role="status" aria-live="polite">就绪 · 完全离线</span><div class="progress-area" hidden><progress id="progress" max="1" value="0"></progress><button id="cancel">取消导出</button></div></footer>
+<input id="media-file" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime" hidden><input id="project-file" type="file" accept=".json,.xuwu,.rvibe" hidden>
+<video id="background-video" muted playsinline preload="auto" hidden></video>
+</body>
+</html>
