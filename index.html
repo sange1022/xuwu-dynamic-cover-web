@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>戌無动态封面 · 网页版</title>
-  <link rel="icon" href="assets/icon.png"><link rel="stylesheet" href="style.css">
-  <script defer src="vendor/codecs.js"></script><script defer src="app.js"></script>
+  <link rel="icon" href="assets/icon.png"><link rel="stylesheet" href="style.css?v=1.1.0">
+  <script defer src="vendor/codecs.js"></script><script defer src="effects.js?v=1.1.0"></script><script defer src="app.js?v=1.1.0"></script>
 </head>
 <body>
 <header>
@@ -16,7 +16,8 @@
     <div class="panel-title"><h2>创作</h2><p>你的文字，你的节奏。</p></div>
     <label for="text">动态文字</label><textarea id="text" rows="4" spellcheck="false"></textarea>
     <div class="row"><button id="random-text">随机文案</button><button id="random-style">随机风格</button></div>
-    <label for="effect">文字动效 · 15 种</label><select id="effect"></select>
+    <label for="effect">文字动效 · 35 种</label><select id="effect"></select>
+    <p class="hint" id="effect-hint">选择动效，实时预览。</p><button id="new-effect" class="quiet">↻ 试试新增的 20 种动效</button>
     <label for="font">字体</label><select id="font"></select>
     <button id="system-fonts" class="quiet">＋ 载入电脑字体</button>
     <div class="row"><input id="custom-font" type="text" placeholder="或输入电脑已安装的字体名称" aria-label="自定义电脑字体名称"><button id="apply-font">应用</button></div>

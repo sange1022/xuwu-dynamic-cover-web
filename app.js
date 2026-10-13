@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const effects = ['星点漂浮','文字落雨','横波排列','隧道透视','环形旋转','重力文字','矢量文字','追踪 HUD','弹性拉伸','故障错位','液态波纹','卡片翻转','打字机','运动残影','呼吸缩放'];
+const effects = ['星点漂浮','文字落雨','横波排列','隧道透视','环形旋转','重力文字','矢量文字','追踪 HUD','弹性拉伸','故障错位','液态波纹','卡片翻转','打字机','运动残影','呼吸缩放',...window.PosterEffects.entries.map(effect=>effect.name)];
 const defaultFonts = ['Arial','Georgia','Courier New','Microsoft YaHei','SimSun','KaiTi','Segoe UI'];
 let fonts = [...defaultFonts], copyIndex = 0, time = 0, playing = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 let busy = false, cancelled = false, loadingMedia = false, openingProject = false, media = null, mediaUrl = null, mediaData = null, mediaName = '', last = performance.now();
@@ -15,7 +15,7 @@ const wrap = value => ((value % 1) + 1) % 1;
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 function status(message) { $('status').textContent = message; }
 function choices(select, entries) { select.replaceChildren(...entries.map(([value,name]) => { const option = document.createElement('option'); option.value=value; option.textContent=name; return option; })); }
-choices($('effect'),effects.map((name,index) => [index,name]));
+for(const [start,end,title] of [[0,15,'原有动效 · 15 种'],[15,effects.length,'社区精选 · 新增 20 种']]){const group=document.createElement('optgroup');group.label=title;for(let index=start;index<end;index++){const option=document.createElement('option');option.value=index;option.textContent=effects[index];group.append(option);}$('effect').append(group);}
 function fontChoices(){choices($('font'),fonts.map(name => [name,({Arial:'Arial / 黑体',Georgia:'Georgia / 衬线', 'Courier New':'Courier New / 等宽','Microsoft YaHei':'微软雅黑',SimSun:'宋体',KaiTi:'楷体','Segoe UI':'Segoe UI'})[name] || name]));}
 fontChoices();
 function synchronize(){
@@ -27,6 +27,7 @@ function updateInfo(){
   $('timeline').max=state.duration; $('timeline').value=time;
   $('canvas-info').textContent=`${state.resolution} × ${state.resolution*4/3} · ${state.duration} 秒 · ${state.fps} fps`;
   $('play').textContent=playing?'暂停':'播放';
+  $('effect-hint').textContent=window.PosterEffects.entries.find(effect=>effect.id===state.effect)?.description||'使用字号、速度和密度调整动效节奏。';
 }
 for(const [id,key] of Object.entries(bindings)) $(id).addEventListener('input',() => {
   const input=$(id); let value=input.type==='checkbox'?input.checked:numbers.has(key)?Number(input.value):input.value;
@@ -35,6 +36,7 @@ for(const [id,key] of Object.entries(bindings)) $(id).addEventListener('input',(
 });
 function random(seed){let value=seed>>>0; return () => { value+=0x6D2B79F5; let n=value; n=Math.imul(n^(n>>>15),n|1); n^=n+Math.imul(n^(n>>>7),n|61); return ((n^(n>>>14))>>>0)/4294967296; };}
 function glyphs(s,seconds){
+  if(s.effect>=15)return window.PosterEffects.glyphs(s,seconds);
   const chars=(typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(s.text)].map(x=>x.segment):Array.from(s.text)).filter(c=>c.trim());
   if(!chars.length)return [];
   const count=Math.max(12,Math.min(96,Math.floor(18+s.density*70))), phase=wrap(seconds*Math.max(.05,s.speed)/s.duration), rand=random(s.seed), offset=rand(), result=[];
@@ -66,10 +68,13 @@ function render(context,s,seconds,background){
   context.save();context.clearRect(0,0,w,h);context.fillStyle=s.background;context.fillRect(0,0,w,h);
   if(background){const bw=background.videoWidth||background.naturalWidth,bh=background.videoHeight||background.naturalHeight;if(bw&&bh){const factor=Math.max(w/bw,h/bh);context.drawImage(background,(w-bw*factor)/2,(h-bh*factor)/2,bw*factor,bh*factor);}}
   context.fillStyle=s.color;context.textAlign='center';context.textBaseline='middle';
-  for(const glyph of glyphs(s,seconds)){
+  const placements=glyphs(s,seconds);window.PosterEffects.backdrop(context,s,seconds,placements);
+  const handled=window.PosterEffects.typography(context,s,seconds);
+  for(const glyph of handled?[]:placements){
     context.save();context.translate(glyph.x*w,glyph.y*h);context.rotate(glyph.rotation*Math.PI/180);context.globalAlpha=glyph.opacity;
+    context.scale(glyph.scaleX??1,glyph.scaleY??1);
     const size=Math.max(12*ratio,s.size*ratio*glyph.scale);context.font=`${s.weight} ${size}px "${s.font.replace(/["\\]/g,'')}", "Microsoft YaHei", sans-serif`;
-    context.fillText(glyph.char,0,0);
+    if(!window.PosterEffects.drawGlyph(context,s,glyph,size))context.fillText(glyph.char,0,0);
     if(s.effect===7&&s.hud){context.globalAlpha=glyph.opacity*.4;context.strokeStyle=s.color;context.lineWidth=ratio;const half=size*.75;context.strokeRect(-half,-half,half*2,half*2);context.beginPath();context.moveTo(-half*1.3,0);context.lineTo(half*1.3,0);context.moveTo(0,-half*1.3);context.lineTo(0,half*1.3);context.stroke();}
     context.restore();
   }
@@ -86,7 +91,8 @@ $('play').onclick=()=>{playing=!playing;updateInfo();};$('restart').onclick=()=>
 $('timeline').oninput=()=>{time=Number($('timeline').value);playing=false;updateInfo();if(media===video)video.currentTime=time%video.duration;render(ctx,state,time,media);};
 function newSeed(){return crypto.getRandomValues(new Uint32Array(1))[0];}
 $('random-text').onclick=()=>{state.text=['MAKE IT MOVE / MAKE IT YOURS','GOOD TASTE IS SUSPICIOUS 👀','TODAY FEELS LIKE A NEW FILE','MOOD IS THE MESSAGE 🫧'][copyIndex++%4];synchronize();};
-$('random-style').onclick=()=>{state.effect=(state.effect+1+Math.floor(Math.random()*14))%15;const other=fonts.filter(name=>name!==state.font);state.font=other[Math.floor(Math.random()*other.length)];state.weight=[300,400,700].filter(x=>x!==state.weight)[Math.floor(Math.random()*2)];state.seed=newSeed();synchronize();};
+$('random-style').onclick=()=>{state.effect=(state.effect+1+Math.floor(Math.random()*(effects.length-1)))%effects.length;const other=fonts.filter(name=>name!==state.font);state.font=other[Math.floor(Math.random()*other.length)];state.weight=[300,400,700].filter(x=>x!==state.weight)[Math.floor(Math.random()*2)];state.seed=newSeed();synchronize();};
+$('new-effect').onclick=()=>{state.effect=state.effect<15?15:15+(state.effect-15+1)%20;state.seed=newSeed();synchronize();};
 $('system-fonts').onclick=async()=>{try{if(!window.queryLocalFonts)throw Error('当前浏览器不支持字体列表访问。已有字体选项仍可使用，更多字体请使用 Chrome / Edge。');const entries=await window.queryLocalFonts();fonts=[...new Set([...defaultFonts,...entries.map(x=>x.family)])];fontChoices();$('font').value=state.font;status(`已载入 ${fonts.length} 个电脑字体`);}catch(error){status(error.name==='NotAllowedError'?'未获得字体访问权限，仍可使用常用字体。':error.message);}};
 $('apply-font').onclick=()=>{const name=$('custom-font').value.trim().replace(/["\\]/g,'');if(!name)return;if(!fonts.includes(name)){fonts.push(name);fontChoices();}state.font=name;synchronize();status('已选择字体：'+name+'。请确保此字体已安装在电脑上。');};
 function releaseMedia(){media=null;mediaData=null;mediaName='';video.pause();video.removeAttribute('src');video.load();if(mediaUrl)URL.revokeObjectURL(mediaUrl);mediaUrl=null;$('media-name').textContent='未添加背景素材';}
@@ -111,7 +117,7 @@ function download(blob,name){const url=URL.createObjectURL(blob),link=document.c
 $('save').onclick=()=>{download(new Blob([JSON.stringify({version:1,state,media:mediaData,mediaName},null,2)],{type:'application/json'}),'戌無动态封面.xuwu');status('项目已保存，背景素材也包含在项目中。');};
 $('new').onclick=()=>{if(busy||loadingMedia||openingProject)return;if(confirm('新建会替换当前画布。请先保存需要保留的项目。')){releaseMedia();state=defaults();time=0;synchronize();status('新项目已创建');}};
 $('open').onclick=()=>$('project-file').click();
-function validateProject(raw){const s={...defaults(),...raw};for(const key of ['text','font','topLeft','topRight','bottomLeft','bottomRight'])if(typeof s[key]!=='string')throw Error('项目文字参数无效。');for(const key of numbers)if(!Number.isFinite(s[key]))throw Error('项目数字参数无效。');if(s.duration<1||s.duration>10||s.effect<0||s.effect>14||!Number.isInteger(s.effect)||s.size<12||s.size>180||s.speed<.1||s.speed>3||s.density<0||s.density>1||![30,60,90,120].includes(s.fps)||![540,720,1080].includes(s.resolution)||![300,400,700].includes(s.weight)||!['mp4','png','gif','live'].includes(s.format)||!/^#[0-9a-f]{6}$/i.test(s.color)||!/^#[0-9a-f]{6}$/i.test(s.background))throw Error('项目参数超出有效范围。');s.seed=(Number(s.seed)||1)>>>0;return s;}
+function validateProject(raw){const s={...defaults(),...raw};for(const key of ['text','font','topLeft','topRight','bottomLeft','bottomRight'])if(typeof s[key]!=='string')throw Error('项目文字参数无效。');for(const key of numbers)if(!Number.isFinite(s[key]))throw Error('项目数字参数无效。');if(s.duration<1||s.duration>10||s.effect<0||s.effect>=effects.length||!Number.isInteger(s.effect)||s.size<12||s.size>180||s.speed<.1||s.speed>3||s.density<0||s.density>1||![30,60,90,120].includes(s.fps)||![540,720,1080].includes(s.resolution)||![300,400,700].includes(s.weight)||!['mp4','png','gif','live'].includes(s.format)||!/^#[0-9a-f]{6}$/i.test(s.color)||!/^#[0-9a-f]{6}$/i.test(s.background))throw Error('项目参数超出有效范围。');s.seed=(Number(s.seed)||1)>>>0;return s;}
 function importWindowsProject(project){
   if(typeof project.Text!=='string'||!Number.isInteger(project.Effect))throw Error('无法识别此项目文件。');
   const color=value=>/^#[0-9a-f]{8}$/i.test(value)?'#'+value.slice(3):value;
